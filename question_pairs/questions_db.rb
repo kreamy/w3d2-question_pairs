@@ -17,6 +17,10 @@ end
 class User
   attr_accessor :id, :fname, :lname
 
+  def liked_questions
+    QuestionFollows.liked_questions_for_user_id(@id)
+  end
+
   def followed_questions
     QuestionFollows.followed_questions_for_user_id(@id)
   end
@@ -71,6 +75,14 @@ end
 
 class Question
   attr_accessor :id, :title, :body, :author_id
+
+  def likers
+    QuestionLike.likers_for_question_id(@id)
+  end
+
+  def num_likes
+    QuestionLike.num_likes_for_question_id(@id)
+  end
 
   def self.most_followed(n)
     QuestionFollow.most_followed_questions(n)
@@ -298,6 +310,26 @@ end
 
 class QuestionLikes
   attr_accessor :id, :user_id, :question_id
+
+  def self.most_liked_questions(n)
+    questions = QuestionDB.instance.execute(<<-SQL, n)
+      SELECT
+        DISTINCT question_id
+      FROM
+        question_likes
+      GROUP BY
+        question_id
+      ORDER BY
+        COUNT(user_id) DESC
+      LIMIT ?
+    SQL
+
+    return nil unless questions.length > 0
+
+    questions.map do |id_hash|
+      Question.find_by_id(id_hash['question_id'])
+    end
+  end
 
   def self.likers_for_question_id(question_id)
     user_ids = QuestionDB.instance.execute(<<-SQL, question_id)
